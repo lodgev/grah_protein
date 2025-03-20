@@ -14,6 +14,8 @@ class ProteinGraph:
         data = pd.read_csv(file_path, sep='\t')
         # Preprocessing
         protein_data_clean = data.dropna(subset=['InterPro']).copy()
+        for col in ['Entry', 'Entry Name', 'Protein names', 'Gene Names', 'EC number', 'InterPro']:
+            protein_data_clean[col] = protein_data_clean[col].replace({np.nan: None, 'NaN': None})
         protein_data_clean['InterPro_list'] = protein_data_clean['InterPro'].apply(lambda x: x.strip(';').split(';'))
         protein_data_final = protein_data_clean[['Entry', 'Entry Name', 'Protein names', 'Gene Names', 'EC number', 'InterPro_list']]
         sample_data = protein_data_final.head(sample_size).reset_index(drop=True)
