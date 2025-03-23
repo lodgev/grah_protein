@@ -156,3 +156,50 @@ class ProteinGraphQuery:
                 } for n in neighbors if n],
                 "edges": edge_list
             }
+
+    def get_total_proteins(self):
+        with self.driver.session() as session:
+            result = session.run("MATCH (p:Protein) RETURN COUNT(p) AS TotalProteins")
+            return result.single()["TotalProteins"]
+
+    def get_labelled_unlabelled(self):
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (p:Protein)
+                RETURN 
+                COUNT(CASE WHEN p.ec_number IS NOT NULL THEN 1 END) AS LabelledProteins,
+                COUNT(CASE WHEN p.ec_number IS NULL THEN 1 END) AS UnlabelledProteins
+                """
+            )
+            record = result.single()
+            return record["LabelledProteins"], record["UnlabelledProteins"]
+
+    def get_isolated_proteins_count(self):
+        with self.driver.session() as session:
+            result = session.run(
+                "MATCH (p:Protein) WHERE NOT (p)-[]-() RETURN COUNT(p) AS IsolatedProteins"
+            )
+            return result.single()["IsolatedProteins"]
+
+    def get_isolated_proteins_list(self, limit=10):
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (p:Protein)
+                WHERE NOT (p)-[]-()
+                RETURN p.entry AS Entry, p.protein_names AS Name
+                LIMIT $limit
+                """, limit=limit
+            )
+            return result.data()
+
+    def get_degree_distribution(self):
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (p:Protein)
+                RETURN p.entry AS Entry, COUNT { (p)--() } AS Degree
+                """
+            )
+            return result.data()
