@@ -1,4 +1,5 @@
 from neo4j import GraphDatabase
+from collections import defaultdict
 
 class ProteinGraphQuery:
     def __init__(self, uri="bolt://localhost:7687", user="neo4j", password="12345678"):
@@ -203,3 +204,32 @@ class ProteinGraphQuery:
                 """
             )
             return result.data()
+
+    def get_protein_info(tx, entry_id):
+        query = """
+        MATCH (p:Protein {entry: $entry})
+        RETURN p.entry AS entry, p.entry_name AS name, p.protein_names AS description, p.ec_number AS ec_number,
+            p.ec_predictions AS predictions
+        """
+        result = tx.run(query, entry=entry_id)
+        return result.single()
+
+    def annotate_protein_multilabel(tx, entry_id, similarity_threshold=0.2, top_n=5, min_weight=0.0):
+        query = """
+        MATCH (p:Protein {entry: $entry_id})-[r:SIMILARITY]-(neighbor)
+        WHERE r.weight >= $threshold AND neighbor.ec_number IS NOT NULL
+        RETURN neighbor.ec_number AS ec, r.weight AS weight
+        """
+        result = tx.run(query, entry_id=entry_id, threshold=similarity_threshold)
+        ec_weights = defaultdict(float)
+        for record in result:
+            ec_raw = record["ec"]
+            weight = record["weight"]
+            ec_list = [ec.strip() for ec in ec_raw.split(';')]
+            for ec in ec_list:
+                ec_weights[ec] += weight
+
+        filtered_ecs = [(ec, weight) for ec, weight in ec_weights.items() if weight >= min_weight]
+        sorted_ecs = sorted(filtered_ecs, key=lambda x: x[1], reverse=True)
+        top_ecs = sorted_ecs[:top_n]
+        return top_ecs
