@@ -1,5 +1,5 @@
 import streamlit as st
-from frontend import home, search_protein, graph_statistics, ml_annotation, upload_graph, visualize_graph
+from frontend import home, search_protein, graph_statistics, ml_annotation, visualize_graph
 from backend.data_loader import ProteinGraph
 
 # ---------------- Load Graph On Startup -----------------
@@ -17,7 +17,7 @@ load_graph_once()
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox(
     "Select Page:",
-    ("Home", "Visualize graph", "Search protein", "Graph statistics", "ML annotation", "Upload your graph")
+    ("Home", "Visualize graph", "Search protein", "Graph statistics", "ML annotation")
 )
 
 

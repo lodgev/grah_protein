@@ -1,13 +1,13 @@
 import streamlit as st
 
 def show():
-    st.title("🧬 Protein-Protein Interaction Graph Dashboard")
+    st.title("Protein-Protein Interaction Graph Dashboard")
     st.subheader("Realized by: Olha ALIEINIK, Doriane BEDIER, Oleksandra KUKSA")
     st.write("Date: March 2025")
 
     st.markdown("---")
 
-    st.header("📄 Project summary")
+    st.header("Project summary")
     st.write("""
     This project focuses on the construction, visualization, and analysis of a Protein-Protein Interaction (PPI) Network 
     based on domain composition similarity. Users can explore the network, search for specific proteins, 
