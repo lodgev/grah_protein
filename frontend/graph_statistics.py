@@ -34,7 +34,7 @@ def show():
 
 
     # --- ISOLATED PROTEINS ---
-    st.subheader(f"Isolated Proteins: {isolated}")
+    st.subheader(f"Isolated proteins: {isolated}")
     st.write("Sample of isolated proteins:")
 
     if isolated_list:

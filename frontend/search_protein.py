@@ -7,31 +7,29 @@ import pandas as pd
 COMPONENT_KEY = "PROTEIN_GRAPH"
 
 def show():
-    st.title("🔍 Search Protein")
+    st.title("Search protein")
 
     st.write("You can search by **Entry ID**, **Protein Name**, or both.")
 
     # --- INPUT ---
-    entry_id = st.text_input("Search by Entry ID:")
-    protein_name = st.text_input("Search by Protein Name (Full):")
+    entry_id = st.text_input("Search by entry ID:")
+    protein_name = st.text_input("Search by protein name (Full):")
     protein_key = st.text_input("Search by keywords:")
 
     # --- Search BUTTON ---
     if st.button("Search"):
-        # Очистимо всі session_state для нового пошуку
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.experimental_rerun()
 
-    # --- IF session has search result ---
-    if 'current_nodes' in st.session_state:
 
+    if 'current_nodes' in st.session_state:
         # --- BACK BUTTON ---
         if 'graph_history' not in st.session_state:
             st.session_state.graph_history = []
 
         if st.session_state.graph_history:
-            if st.button("⬅️ Back to Previous Graph"):
+            if st.button("Go back"):
                 last_graph = st.session_state.graph_history.pop()
                 st.session_state.current_nodes = last_graph["nodes"]
                 st.session_state.current_edges = last_graph["edges"]
@@ -64,34 +62,33 @@ def show():
         if event and event.get("action") == "expand":
             selected_node = event["data"]["node_ids"][0]
             st.info(f"Double Clicked Node: {selected_node}")
+            
 
-            # Зберігаємо попередній граф в історію
             st.session_state.graph_history.append({
                 "nodes": st.session_state.current_nodes.copy(),
                 "edges": st.session_state.current_edges.copy()
             })
-
-            # Очистити поточний граф для підграфа
+            
             st.session_state.current_nodes = []
             st.session_state.current_edges = []
 
-            # Завантажити підграф
+
             query = ProteinGraphQuery()
             sub_data = query.get_neighbors_by_id(selected_node)
             query.close()
 
-            # Додаємо вузол
+            # + nodes
             st.session_state.current_nodes.append({
                 "data": {"id": sub_data['protein']['entry'], "label": "Protein", "name": sub_data['protein']['name']}
             })
 
-            # Додаємо сусідів
+            # + neighbors
             for neighbor in sub_data['neighbors']:
                 st.session_state.current_nodes.append({
                     "data": {"id": neighbor['entry'], "label": "Protein", "name": neighbor['name']}
                 })
 
-            # Додаємо ребра
+            # + edges
             for rel in sub_data['edges']:
                 st.session_state.current_edges.append({
                     "data": {"id": f"{rel['source']}-{rel['target']}",
@@ -104,7 +101,6 @@ def show():
 
     # --- INITIAL LOAD ---
     elif (entry_id or protein_name or protein_key) and not st.session_state.get('back_pressed'):
-        # Якщо користувач ввів дані і натиснув Search
         query = ProteinGraphQuery()
         data = query.search_protein(entry_id=entry_id if entry_id else None,
                                     protein_name=protein_name if protein_name else None,
@@ -143,7 +139,7 @@ def show():
                                 "target": rel['target']}
                 })
 
-            # Зберігаємо в session_state
+
             st.session_state.current_nodes = nodes.copy()
             st.session_state.current_edges = edges.copy()
             st.experimental_rerun()

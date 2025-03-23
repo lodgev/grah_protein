@@ -3,7 +3,7 @@ from backend.graph_query import ProteinGraphQuery
 from st_link_analysis import st_link_analysis, NodeStyle, EdgeStyle
 
 def show():
-    st.title("📊 Visualize Full Graph")
+    st.title("Visualize full graph")
 
     st.write("Displaying a sample of the full protein-protein interaction graph.")
 
@@ -24,5 +24,5 @@ def show():
     edge_styles = [EdgeStyle("Similarity", caption='label', directed=False)]
     elements = {"nodes": nodes, "edges": edge_list}
 
-    st.subheader(f"Full Graph Visualization ({limit} proteins)")
+    st.subheader(f"Full graph visualization ({limit} proteins)")
     st_link_analysis(elements, layout="cose", node_styles=node_styles, edge_styles=edge_styles)
