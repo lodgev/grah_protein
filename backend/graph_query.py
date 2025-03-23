@@ -43,20 +43,75 @@ class ProteinGraphQuery:
                     })
             return proteins, edges
 
-    def search_protein(self, entry_id=None, protein_name=None):
+    # def search_protein(self, entry_id=None, protein_name=None):
+    #     with self.driver.session() as session:
+    #         if entry_id:
+    #             query = """
+    #             MATCH(p:Protein {entry: $entry})
+    #             OPTIONAL MATCH (p)-[:SIMILARITY]-(neighbor)
+    #             OPTIONAL MATCH (neighbor)-[r:SIMILARITY]-(second_neighbor)
+    #             RETURN p, 
+    #                 COLLECT(DISTINCT neighbor) AS direct_neighbors, 
+    #                 COLLECT(DISTINCT second_neighbor) AS second_neighbors,
+    #                 COLLECT(DISTINCT r) AS second_edges
+    #             """
+    #             params = {"entry": entry_id}
+    #         elif protein_name:
+    #             query = """
+    #             MATCH (p:Protein {protein_names: $protein_name})
+    #             OPTIONAL MATCH (p)-[:SIMILARITY]-(neighbor)
+    #             OPTIONAL MATCH (neighbor)-[r:SIMILARITY]-(second_neighbor)
+    #             RETURN p, 
+    #                 COLLECT(DISTINCT neighbor) AS direct_neighbors, 
+    #                 COLLECT(DISTINCT second_neighbor) AS second_neighbors,
+    #                 NoneCOLLECT(DISTINCT r) AS second_edges
+    #             """
+    #             params = {"protein_name": protein_name}
+    #         else:
+    #             return None
+
+    #         result = session.run(query, **params)
+    #         record = result.single()
+    #         if not record:
+    #             return None
+
+    #         protein = record['p']
+    #         direct_neighbors = record['direct_neighbors']
+    #         second_neighbors = record['second_neighbors']
+    #         second_edges = record['second_edges']
+
+    #         # Prepare edges
+    #         edges_list = []
+    #         for rel in second_edges:
+    #             if rel:
+    #                 edges_list.append({
+    #                     "source": rel.start_node['entry'],
+    #                     "target": rel.end_node['entry'],
+    #                     "weight": rel['weight']
+    #                 })
+
+    #         return {
+    #             "protein": {
+    #                 "entry": protein['entry'],
+    #                 "name": protein['entry_name'],
+    #                 "gene_names": protein['gene_names'],
+    #                 "function": protein['ec_number']
+    #             },
+    #             "direct_neighbors": [{
+    #                 "entry": n['entry'],
+    #                 "name": n['entry_name']
+    #             } for n in direct_neighbors if n],
+    #             "second_neighbors": [{
+    #                 "entry": n['entry'],
+    #                 "name": n['entry_name']
+    #             } for n in second_neighbors if n],
+    #             "second_edges": edges_list
+    #         }
+    
+    def search_protein(self, entry_id=None, protein_name=None, protein_key=None):
         with self.driver.session() as session:
-            if entry_id and protein_name:
-                query = """
-                MATCH(p:Protein {entry: $entry, protein_names: $protein_name})
-                OPTIONAL MATCH (p)-[:SIMILARITY]-(neighbor)
-                OPTIONAL MATCH (neighbor)-[r:SIMILARITY]-(second_neighbor)
-                RETURN p, 
-                    COLLECT(DISTINCT neighbor) AS direct_neighbors, 
-                    COLLECT(DISTINCT second_neighbor) AS second_neighbors,
-                    COLLECT(DISTINCT r) AS second_edges
-                """
-                params = {"entry": entry_id, "protein_name": protein_name}
-            elif entry_id:
+            # --- 1️⃣ Пошук по Entry ID ---
+            if entry_id:
                 query = """
                 MATCH(p:Protein {entry: $entry})
                 OPTIONAL MATCH (p)-[:SIMILARITY]-(neighbor)
@@ -67,7 +122,13 @@ class ProteinGraphQuery:
                     COLLECT(DISTINCT r) AS second_edges
                 """
                 params = {"entry": entry_id}
-            elif protein_name:
+                result = session.run(query, **params)
+                record = result.single()
+                if record and record['p']:
+                    return self._process_protein_record(record)
+
+            # --- 2️⃣ Пошук по Full Name ---
+            if protein_name:
                 query = """
                 MATCH (p:Protein {protein_names: $protein_name})
                 OPTIONAL MATCH (p)-[:SIMILARITY]-(neighbor)
@@ -78,46 +139,32 @@ class ProteinGraphQuery:
                     COLLECT(DISTINCT r) AS second_edges
                 """
                 params = {"protein_name": protein_name}
-            else:
-                return None
+                result = session.run(query, **params)
+                record = result.single()
+                if record and record['p']:
+                    return self._process_protein_record(record)
 
-            result = session.run(query, **params)
-            record = result.single()
-            if not record:
-                return None
+            # --- 3️⃣ Пошук по keywords ---
+            if protein_key:
+                query = """
+                MATCH (p:Protein)
+                WHERE p.protein_names CONTAINS $keyword
+                OPTIONAL MATCH (p)-[:SIMILARITY]-(neighbor)
+                OPTIONAL MATCH (neighbor)-[r:SIMILARITY]-(second_neighbor)
+                RETURN p, 
+                    COLLECT(DISTINCT neighbor) AS direct_neighbors, 
+                    COLLECT(DISTINCT second_neighbor) AS second_neighbors,
+                    COLLECT(DISTINCT r) AS second_edges
+                """
+                params = {"keyword": protein_key}
+                result = session.run(query, **params)
+                record = result.single()
+                if record and record['p']:
+                    return self._process_protein_record(record)
 
-            protein = record['p']
-            direct_neighbors = record['direct_neighbors']
-            second_neighbors = record['second_neighbors']
-            second_edges = record['second_edges']
+            # --- Нічого не знайдено ---
+            return 
 
-            # Prepare edges
-            edges_list = []
-            for rel in second_edges:
-                if rel:
-                    edges_list.append({
-                        "source": rel.start_node['entry'],
-                        "target": rel.end_node['entry'],
-                        "weight": rel['weight']
-                    })
-
-            return {
-                "protein": {
-                    "entry": protein['entry'],
-                    "name": protein['entry_name'],
-                    "gene_names": protein['gene_names'],
-                    "function": protein['ec_number']
-                },
-                "direct_neighbors": [{
-                    "entry": n['entry'],
-                    "name": n['entry_name']
-                } for n in direct_neighbors if n],
-                "second_neighbors": [{
-                    "entry": n['entry'],
-                    "name": n['entry_name']
-                } for n in second_neighbors if n],
-                "second_edges": edges_list
-            }
             
     def get_neighbors_by_id(self, entry_id):
         with self.driver.session() as session:
@@ -195,15 +242,7 @@ class ProteinGraphQuery:
             )
             return result.data()
 
-    def get_degree_distribution(self):
-        with self.driver.session() as session:
-            result = session.run(
-                """
-                MATCH (p:Protein)
-                RETURN p.entry AS Entry, COUNT { (p)--() } AS Degree
-                """
-            )
-            return result.data()
+
 
     def get_protein_info(tx, entry_id):
         query = """
@@ -233,3 +272,37 @@ class ProteinGraphQuery:
         sorted_ecs = sorted(filtered_ecs, key=lambda x: x[1], reverse=True)
         top_ecs = sorted_ecs[:top_n]
         return top_ecs
+
+    def _process_protein_record(self, record):
+        protein = record['p']
+        direct_neighbors = record['direct_neighbors']
+        second_neighbors = record['second_neighbors']
+        second_edges = record['second_edges']
+
+        # Prepare edges
+        edges_list = []
+        for rel in second_edges:
+            if rel:
+                edges_list.append({
+                    "source": rel.start_node['entry'],
+                    "target": rel.end_node['entry'],
+                    "weight": rel['weight']
+                })
+
+        return {
+            "protein": {
+                "entry": protein['entry'],
+                "name": protein['entry_name'],
+                "gene_names": protein['gene_names'],
+                "function": protein['ec_number']
+            },
+            "direct_neighbors": [{
+                "entry": n['entry'],
+                "name": n['entry_name']
+            } for n in direct_neighbors if n],
+            "second_neighbors": [{
+                "entry": n['entry'],
+                "name": n['entry_name']
+            } for n in second_neighbors if n],
+            "second_edges": edges_list
+        }

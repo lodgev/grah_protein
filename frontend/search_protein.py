@@ -14,6 +14,7 @@ def show():
     # --- INPUT ---
     entry_id = st.text_input("Search by Entry ID:")
     protein_name = st.text_input("Search by Protein Name (Full):")
+    protein_key = st.text_input("Search by keywords:")
 
     # --- Search BUTTON ---
     if st.button("Search"):
@@ -102,11 +103,12 @@ def show():
             st.experimental_rerun()
 
     # --- INITIAL LOAD ---
-    elif (entry_id or protein_name) and not st.session_state.get('back_pressed'):
+    elif (entry_id or protein_name or protein_key) and not st.session_state.get('back_pressed'):
         # Якщо користувач ввів дані і натиснув Search
         query = ProteinGraphQuery()
         data = query.search_protein(entry_id=entry_id if entry_id else None,
-                                    protein_name=protein_name if protein_name else None)
+                                    protein_name=protein_name if protein_name else None,
+                                    protein_key=protein_key if protein_key else None)
         query.close()
 
         if data:
@@ -123,9 +125,9 @@ def show():
                 })
                 edges.append({
                     "data": {"id": f"{data['protein']['entry']}-{neighbor['entry']}",
-                             "label": "Direct Neighbor",
-                             "source": data['protein']['entry'],
-                             "target": neighbor['entry']}
+                                "label": "Direct Neighbor",
+                                "source": data['protein']['entry'],
+                                "target": neighbor['entry']}
                 })
 
             for neighbor in data['second_neighbors']:
@@ -136,9 +138,9 @@ def show():
             for rel in data['second_edges']:
                 edges.append({
                     "data": {"id": f"{rel['source']}-{rel['target']}",
-                             "label": f"Similarity {rel['weight']:.2f}",
-                             "source": rel['source'],
-                             "target": rel['target']}
+                                "label": f"Similarity {rel['weight']:.2f}",
+                                "source": rel['source'],
+                                "target": rel['target']}
                 })
 
             # Зберігаємо в session_state
@@ -147,6 +149,3 @@ def show():
             st.experimental_rerun()
         else:
             st.warning("No matching protein found.")
-
-
-

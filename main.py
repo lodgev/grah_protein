@@ -14,14 +14,11 @@ def load_graph_once():
 
 load_graph_once()
 
-# Sidebar dropdown
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox(
     "Select Page:",
     ("Home", "Visualize graph", "Search protein", "Graph statistics", "ML annotation", "Upload your graph")
 )
-
-# Importing pages
 
 
 # Routing
@@ -35,5 +32,3 @@ elif page == "Graph statistics":
     graph_statistics.show()
 elif page == "ML annotation":
     ml_annotation.show()
-elif page == "Upload your graph":
-    upload_graph.show()
